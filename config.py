@@ -7,7 +7,7 @@ SCOPE = "https://www.google.com/m8/feeds/ https://www.googleapis.com/auth/userin
 OAUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://www.googleapis.com/oauth2/v4/token"
 
-REDIRECT_URI = "https://vishaagan1994.appspot.com/"
+REDIRECT_URI = "http://vishaagan1994.appspot.com/oauth2callback"
 
 if is_dev:
     REDIRECT_URI = "http://localhost:10080/oauth2callback"
