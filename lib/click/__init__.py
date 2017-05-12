@@ -32,7 +32,7 @@ from .types import ParamType, File, Path, Choice, IntRange, Tuple, \
 
 # Utilities
 from .utils import echo, get_binary_stream, get_text_stream, open_file, \
-     format_filename, get_app_dir, get_os_args
+     format_filename, get_app_dir
 
 # Terminal functions
 from .termui import prompt, confirm, get_terminal_size, echo_via_pager, \
@@ -41,8 +41,7 @@ from .termui import prompt, confirm, get_terminal_size, echo_via_pager, \
 
 # Exceptions
 from .exceptions import ClickException, UsageError, BadParameter, \
-     FileError, Abort, NoSuchOption, BadOptionUsage, BadArgumentUsage, \
-     MissingParameter
+     FileError, Abort, NoSuchOption, BadOptionUsage, MissingParameter
 
 # Formatting
 from .formatting import HelpFormatter, wrap_text
@@ -70,7 +69,7 @@ __all__ = [
 
     # Utilities
     'echo', 'get_binary_stream', 'get_text_stream', 'open_file',
-    'format_filename', 'get_app_dir', 'get_os_args',
+    'format_filename', 'get_app_dir',
 
     # Terminal functions
     'prompt', 'confirm', 'get_terminal_size', 'echo_via_pager',
@@ -79,8 +78,7 @@ __all__ = [
 
     # Exceptions
     'ClickException', 'UsageError', 'BadParameter', 'FileError',
-    'Abort', 'NoSuchOption', 'BadOptionUsage', 'BadArgumentUsage',
-    'MissingParameter',
+    'Abort', 'NoSuchOption', 'BadOptionUsage', 'MissingParameter',
 
     # Formatting
     'HelpFormatter', 'wrap_text',
@@ -95,4 +93,4 @@ __all__ = [
 disable_unicode_literals_warning = False
 
 
-__version__ = '6.7'
+__version__ = '5.1'

@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://F:\WORKSPACE\Python\Google_app_engine\GoogleContactManager\.idea\Google Contact Manager.iml" filepath="F:\WORKSPACE\Python\Google_app_engine\GoogleContactManager\.idea\Google Contact Manager.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/GoogleContactManager.iml" filepath="$PROJECT_DIR$/.idea/GoogleContactManager.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../SessionMaintainer/.idea/SessionMaintainer.iml" filepath="$PROJECT_DIR$/../SessionMaintainer/.idea/SessionMaintainer.iml" />
     </modules>
   </component>
 </project>

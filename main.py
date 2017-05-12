@@ -1,22 +1,22 @@
-import json
-from urllib import urlencode
-from urllib2 import Request
-
 from flask import Flask, render_template, redirect, request
 from google.appengine.api import urlfetch
+import json
+from models.user import User
+from models.session import Session
+from urllib import urlencode
+from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
+from services.oauth_services import fetch_access_token
 
 app = Flask(__name__)
-
-CLIENT_ID = "416442779372-0ta38dd6esfmepfoprg53omos1v9jhrf.apps.googleusercontent.com"
-CLIENT_SECRET = "4NhDKjukCRAl1mxHXpfvkU8W"
-SCOPE = "https://www.google.com/m8/feeds/ https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email"
-REDIRECT_URI = "http://vishaagan1994.appspot.com/oauth2callback"
-OAUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_ENDPOINT = "https://www.googleapis.com/oauth2/v4/token"
 
 
 @app.route('/')
 def index():
+    if 'sessionID' in request.cookies:
+        client_uuid = request.cookies.get('sessionID')
+        user = Session.get_by_id(client_uuid)
+        if user: return 'Welcome {}'.format(user.name)  # redirect('/showcontacts')
+
     return render_template('index.html')
 
 
@@ -34,22 +34,26 @@ def google_signin():
 
 @app.route('/oauth2callback')
 def oauth2_callback():
-    params = {'client_id': CLIENT_ID,
-              'client_secret': CLIENT_SECRET,
-              'redirect_uri': REDIRECT_URI,
-              'grant_type': 'authorization_code',
-              'code': request.args.get('code')}
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
-    res = urlfetch.fetch(TOKEN_ENDPOINT, method='POST', payload=urlencode(params), headers=headers)
-    token_data = json.loads(res.content)
+    token_data = fetch_access_token(request.args.get('code'))
 
     headers = {'Authorization': 'Bearer {}'.format(token_data['access_token'])}
-    req_uri = 'https://www.googleapis.com/oauth2/v1/userinfo'
-    res = urlfetch.fetch(req_uri, headers=headers, method='GET')
-    # user_data = json.loads()
+    url = 'https://www.googleapis.com/oauth2/v1/userinfo'
+    res = urlfetch.fetch(url, headers=headers, method='GET')  # Getting userinfo
+    user_data = json.loads(res.content)
 
-    return str(res.content)
+    User.set_user(user_data, token_data)
+    uuid = Session.set_session(user_data)
+
+    res = redirect('/')
+    res.set_cookie('sessionID', uuid)
+
+    return res
+
+
+@app.route('/showcontacts')
+def show_contacts():
+    return 'Under Progress'
 
 
 if __name__ == '__main__':

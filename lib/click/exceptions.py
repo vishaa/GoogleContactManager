@@ -116,13 +116,12 @@ class MissingParameter(BadParameter):
             param_type = self.param.param_type_name
 
         msg = self.message
-        if self.param is not None:
-            msg_extra = self.param.type.get_missing_message(self.param)
-            if msg_extra:
-                if msg:
-                    msg += '.  ' + msg_extra
-                else:
-                    msg = msg_extra
+        msg_extra = self.param.type.get_missing_message(self.param)
+        if msg_extra:
+            if msg:
+                msg += '.  ' + msg_extra
+            else:
+                msg = msg_extra
 
         return 'Missing %s%s%s%s' % (
             param_type,
@@ -166,19 +165,7 @@ class BadOptionUsage(UsageError):
     .. versionadded:: 4.0
     """
 
-    def __init__(self, message, ctx=None):
-        UsageError.__init__(self, message, ctx)
-
-
-class BadArgumentUsage(UsageError):
-    """Raised if an argument is generally supplied but the use of the argument
-    was incorrect.  This is for instance raised if the number of values
-    for an argument is not correct.
-
-    .. versionadded:: 6.0
-    """
-
-    def __init__(self, message, ctx=None):
+    def __init__(self, option_name, message, ctx=None):
         UsageError.__init__(self, message, ctx)
 
 

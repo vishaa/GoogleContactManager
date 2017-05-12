@@ -1,12 +1,12 @@
-import errno
 import os
 import sys
+import codecs
 from contextlib import contextmanager
 from itertools import repeat
 from functools import update_wrapper
 
 from .types import convert_type, IntRange, BOOL
-from .utils import make_str, make_default_short_help, echo, get_os_args
+from .utils import make_str, make_default_short_help, echo
 from .exceptions import ClickException, UsageError, BadParameter, Abort, \
      MissingParameter
 from .termui import prompt, confirm
@@ -14,8 +14,7 @@ from .formatting import HelpFormatter, join_options
 from .parser import OptionParser, split_opt
 from .globals import push_context, pop_context
 
-from ._compat import PY2, isidentifier, iteritems
-from ._unicodefun import _check_for_unicode_literals, _verify_python3_env
+from ._compat import PY2, isidentifier, iteritems, _check_for_unicode_literals
 
 
 _missing = object()
@@ -36,27 +35,6 @@ def _bashcomplete(cmd, prog_name, complete_var=None):
     from ._bashcomplete import bashcomplete
     if bashcomplete(cmd, prog_name, complete_var, complete_instr):
         sys.exit(1)
-
-
-def _check_multicommand(base_command, cmd_name, cmd, register=False):
-    if not base_command.chain or not isinstance(cmd, MultiCommand):
-        return
-    if register:
-        hint = 'It is not possible to add multi commands as children to ' \
-               'another multi command that is in chain mode'
-    else:
-        hint = 'Found a multi command as subcommand to a multi command ' \
-               'that is in chain mode.  This is not supported'
-    raise RuntimeError('%s.  Command "%s" is set to chain and "%s" was '
-                       'added as subcommand but it in itself is a '
-                       'multi command.  ("%s" is a %s within a chained '
-                       '%s named "%s").  This restriction was supposed to '
-                       'be lifted in 6.0 but the fix was flawed.  This '
-                       'will be fixed in Click 7.0' % (
-                           hint, base_command.name, cmd_name,
-                           cmd_name, cmd.__class__.__name__,
-                           base_command.__class__.__name__,
-                           base_command.name))
 
 
 def batch(iterable, batch_size):
@@ -209,11 +187,6 @@ class Context(object):
         self.params = {}
         #: the leftover arguments.
         self.args = []
-        #: protected arguments.  These are arguments that are prepended
-        #: to `args` when certain parsing scenarios are encountered but
-        #: must be never propagated to another arguments.  This is used
-        #: to implement nested parsing.
-        self.protected_args = []
         if obj is None and parent is not None:
             obj = parent.obj
         #: the user object stored.
@@ -326,10 +299,10 @@ class Context(object):
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
+        pop_context()
         self._depth -= 1
         if self._depth == 0:
             self.close()
-        pop_context()
 
     @contextmanager
     def scope(self, cleanup=True):
@@ -673,15 +646,25 @@ class BaseCommand(object):
         # sane at this point of reject further execution to avoid a
         # broken script.
         if not PY2:
-            _verify_python3_env()
+            try:
+                import locale
+                fs_enc = codecs.lookup(locale.getpreferredencoding()).name
+            except Exception:
+                fs_enc = 'ascii'
+            if fs_enc == 'ascii':
+                raise RuntimeError('Click will abort further execution '
+                                   'because Python 3 was configured to use '
+                                   'ASCII as encoding for the environment. '
+                                   'Either switch to Python 2 or consult '
+                                   'http://click.pocoo.org/python3/ '
+                                   'for mitigation steps.')
         else:
             _check_for_unicode_literals()
 
         if args is None:
-            args = get_os_args()
+            args = sys.argv[1:]
         else:
             args = list(args)
-
         if prog_name is None:
             prog_name = make_str(os.path.basename(
                 sys.argv and sys.argv[0] or __file__))
@@ -706,11 +689,6 @@ class BaseCommand(object):
                     raise
                 e.show()
                 sys.exit(e.exit_code)
-            except IOError as e:
-                if e.errno == errno.EPIPE:
-                    sys.exit(1)
-                else:
-                    raise
         except Abort:
             if not standalone_mode:
                 raise
@@ -940,12 +918,6 @@ class MultiCommand(Command):
         #: overridden with the :func:`resultcallback` decorator.
         self.result_callback = result_callback
 
-        if self.chain:
-            for param in self.params:
-                if isinstance(param, Argument) and not param.required:
-                    raise RuntimeError('Multi commands in chain mode cannot '
-                                       'have optional arguments.')
-
     def collect_usage_pieces(self, ctx):
         rv = Command.collect_usage_pieces(self, ctx)
         rv.append(self.subcommand_metavar)
@@ -1014,15 +986,7 @@ class MultiCommand(Command):
         if not args and self.no_args_is_help and not ctx.resilient_parsing:
             echo(ctx.get_help(), color=ctx.color)
             ctx.exit()
-
-        rest = Command.parse_args(self, ctx, args)
-        if self.chain:
-            ctx.protected_args = rest
-            ctx.args = []
-        elif rest:
-            ctx.protected_args, ctx.args = rest[:1], rest[1:]
-
-        return ctx.args
+        return Command.parse_args(self, ctx, args)
 
     def invoke(self, ctx):
         def _process_result(value):
@@ -1031,7 +995,7 @@ class MultiCommand(Command):
                                    **ctx.params)
             return value
 
-        if not ctx.protected_args:
+        if not ctx.args:
             # If we are invoked without command the chain flag controls
             # how this happens.  If we are not in chain mode, the return
             # value here is the return value of the command.
@@ -1046,10 +1010,7 @@ class MultiCommand(Command):
                     return _process_result([])
             ctx.fail('Missing command.')
 
-        # Fetch args back out
-        args = ctx.protected_args + ctx.args
-        ctx.args = []
-        ctx.protected_args = []
+        args = ctx.args
 
         # If we're not in chain mode, we only allow the invocation of a
         # single command but we also inform the current context about the
@@ -1084,7 +1045,7 @@ class MultiCommand(Command):
                                            allow_extra_args=True,
                                            allow_interspersed_args=False)
                 contexts.append(sub_ctx)
-                args, sub_ctx.args = sub_ctx.args, []
+                args = sub_ctx.args
 
             rv = []
             for sub_ctx in contexts:
@@ -1150,7 +1111,6 @@ class Group(MultiCommand):
         name = name or cmd.name
         if name is None:
             raise TypeError('Command has no name.')
-        _check_multicommand(self, name, cmd, register=True)
         self.commands[name] = cmd
 
     def command(self, *args, **kwargs):
@@ -1204,8 +1164,6 @@ class CommandCollection(MultiCommand):
         for source in self.sources:
             rv = source.get_command(ctx, cmd_name)
             if rv is not None:
-                if self.chain:
-                    _check_multicommand(self, cmd_name, rv)
                 return rv
 
     def list_commands(self, ctx):
@@ -1537,12 +1495,9 @@ class Option(Parameter):
                 if split_char in decl:
                     first, second = decl.split(split_char, 1)
                     first = first.rstrip()
-                    if first:
-                        possible_names.append(split_opt(first))
-                        opts.append(first)
-                    second = second.lstrip()
-                    if second:
-                        secondary_opts.append(second.lstrip())
+                    possible_names.append(split_opt(first))
+                    opts.append(first)
+                    secondary_opts.append(second.lstrip())
                 else:
                     possible_names.append(split_opt(decl))
                     opts.append(decl)
@@ -1697,9 +1652,6 @@ class Argument(Parameter):
             else:
                 required = attrs.get('nargs', 1) > 0
         Parameter.__init__(self, param_decls, required=required, **attrs)
-        if self.default is not None and self.nargs < 0:
-            raise TypeError('nargs=-1 in combination with a default value '
-                            'is not supported.')
 
     @property
     def human_readable_name(self):

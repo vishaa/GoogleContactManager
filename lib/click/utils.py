@@ -1,5 +1,6 @@
 import os
 import sys
+from collections import deque
 
 from .globals import resolve_color_default
 
@@ -10,9 +11,6 @@ from ._compat import text_type, open_stream, get_filesystem_encoding, \
 
 if not PY2:
     from ._compat import _find_binary_writer
-elif WIN:
-    from ._winconsole import _get_windows_argv, \
-         _hash_py_argv, _initial_argv_hash
 
 
 echo_native_types = string_types + (bytes, bytearray)
@@ -20,6 +18,70 @@ echo_native_types = string_types + (bytes, bytearray)
 
 def _posixify(name):
     return '-'.join(name.split()).lower()
+
+
+def unpack_args(args, nargs_spec):
+    """Given an iterable of arguments and an iterable of nargs specifications,
+    it returns a tuple with all the unpacked arguments at the first index
+    and all remaining arguments as the second.
+
+    The nargs specification is the number of arguments that should be consumed
+    or `-1` to indicate that this position should eat up all the remainders.
+
+    Missing items are filled with `None`.
+
+    Examples:
+
+    >>> unpack_args(range(6), [1, 2, 1, -1])
+    ((0, (1, 2), 3, (4, 5)), [])
+    >>> unpack_args(range(6), [1, 2, 1])
+    ((0, (1, 2), 3), [4, 5])
+    >>> unpack_args(range(6), [-1])
+    (((0, 1, 2, 3, 4, 5),), [])
+    >>> unpack_args(range(6), [1, 1])
+    ((0, 1), [2, 3, 4, 5])
+    >>> unpack_args(range(6), [-1,1,1,1,1])
+    (((0, 1), 2, 3, 4, 5), [])
+    """
+    args = deque(args)
+    nargs_spec = deque(nargs_spec)
+    rv = []
+    spos = None
+
+    def _fetch(c):
+        try:
+            if spos is None:
+                return c.popleft()
+            else:
+                return c.pop()
+        except IndexError:
+            return None
+
+    while nargs_spec:
+        nargs = _fetch(nargs_spec)
+        if nargs == 1:
+            rv.append(_fetch(args))
+        elif nargs > 1:
+            x = [_fetch(args) for _ in range(nargs)]
+            # If we're reversed, we're pulling in the arguments in reverse,
+            # so we need to turn them around.
+            if spos is not None:
+                x.reverse()
+            rv.append(tuple(x))
+        elif nargs < 0:
+            if spos is not None:
+                raise TypeError('Cannot have two nargs < 0')
+            spos = len(rv)
+            rv.append(None)
+
+    # spos is the position of the wildcard (star).  If it's not `None`,
+    # we fill it with the remainder.
+    if spos is not None:
+        rv[spos] = tuple(args)
+        args = []
+        rv[spos + 1:] = reversed(rv[spos + 1:])
+
+    return tuple(rv), list(args)
 
 
 def safecall(func):
@@ -172,8 +234,7 @@ def echo(message=None, file=None, nl=True, err=False, color=None):
     Primarily it means that you can print binary data as well as Unicode
     data on both 2.x and 3.x to the given file in the most appropriate way
     possible.  This is a very carefree function as in that it will try its
-    best to not fail.  As of Click 6.0 this includes support for unicode
-    output on the Windows console.
+    best to not fail.
 
     In addition to that, if `colorama`_ is installed, the echo function will
     also support clever handling of ANSI codes.  Essentially it will then
@@ -184,12 +245,6 @@ def echo(message=None, file=None, nl=True, err=False, color=None):
         terminal.
 
     .. _colorama: http://pypi.python.org/pypi/colorama
-
-    .. versionchanged:: 6.0
-       As of Click 6.0 the echo function will properly support unicode
-       output on the windows console.  Not that click does not modify
-       the interpreter in any way which means that `sys.stdout` or the
-       print statement or function will still not provide unicode support.
 
     .. versionchanged:: 2.0
        Starting with version 2.0 of Click, the echo function will work
@@ -324,27 +379,6 @@ def open_file(filename, mode='r', encoding=None, errors='strict',
     if not should_close:
         f = KeepOpenFile(f)
     return f
-
-
-def get_os_args():
-    """This returns the argument part of sys.argv in the most appropriate
-    form for processing.  What this means is that this return value is in
-    a format that works for Click to process but does not necessarily
-    correspond well to what's actually standard for the interpreter.
-
-    On most environments the return value is ``sys.argv[:1]`` unchanged.
-    However if you are on Windows and running Python 2 the return value
-    will actually be a list of unicode strings instead because the
-    default behavior on that platform otherwise will not be able to
-    carry all possible values that sys.argv can have.
-
-    .. versionadded:: 6.0
-    """
-    # We can only extract the unicode argv if sys.argv has not been
-    # changed since the startup of the application.
-    if PY2 and WIN and _initial_argv_hash == _hash_py_argv():
-        return _get_windows_argv()
-    return sys.argv[1:]
 
 
 def format_filename(filename, shorten=False):

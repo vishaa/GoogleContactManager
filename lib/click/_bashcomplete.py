@@ -30,19 +30,27 @@ def get_completion_script(prog_name, complete_var):
 
 def resolve_ctx(cli, prog_name, args):
     ctx = cli.make_context(prog_name, args, resilient_parsing=True)
-    while ctx.protected_args + ctx.args and isinstance(ctx.command, MultiCommand):
-        a = ctx.protected_args + ctx.args
-        cmd = ctx.command.get_command(ctx, a[0])
+    while ctx.args and isinstance(ctx.command, MultiCommand):
+        cmd = ctx.command.get_command(ctx, ctx.args[0])
         if cmd is None:
             return None
-        ctx = cmd.make_context(a[0], a[1:], parent=ctx, resilient_parsing=True)
+        ctx = cmd.make_context(ctx.args[0], ctx.args[1:], parent=ctx,
+                               resilient_parsing=True)
     return ctx
 
 
-def get_choices(cli, prog_name, args, incomplete):
+def do_complete(cli, prog_name):
+    cwords = split_arg_string(os.environ['COMP_WORDS'])
+    cword = int(os.environ['COMP_CWORD'])
+    args = cwords[1:cword]
+    try:
+        incomplete = cwords[cword]
+    except IndexError:
+        incomplete = ''
+
     ctx = resolve_ctx(cli, prog_name, args)
     if ctx is None:
-        return
+        return True
 
     choices = []
     if incomplete and not incomplete[:1].isalnum():
@@ -56,20 +64,7 @@ def get_choices(cli, prog_name, args, incomplete):
 
     for item in choices:
         if item.startswith(incomplete):
-            yield item
-
-
-def do_complete(cli, prog_name):
-    cwords = split_arg_string(os.environ['COMP_WORDS'])
-    cword = int(os.environ['COMP_CWORD'])
-    args = cwords[1:cword]
-    try:
-        incomplete = cwords[cword]
-    except IndexError:
-        incomplete = ''
-
-    for item in get_choices(cli, prog_name, args, incomplete):
-        echo(item)
+            echo(item)
 
     return True
 
