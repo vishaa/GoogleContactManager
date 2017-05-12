@@ -73,14 +73,19 @@ def fetch_contacts():
     r = urlfetch.fetch(req_uri, headers=headers, method='GET')
     data = json.loads(r.content)
 
-    feed = data.get('feed')
-    entry = feed.get('entry')  # List
-    contact_name = entry[0].get('gd$name').get('gd$fullName').get('$t')
-    number = entry[0].get('gd$phoneNumber')
-    contact_number = number[0].get('$t')
-    Contacts.add_contact(email, contact_name, contact_number)
+    contact_list = data.get('feed', {}).get('entry', [])  # List
+    for contact in contact_list:
+        name = contact.get('gd$name', {})\
+                        .get('gd$fullName', {})\
+                        .get('$t', 'No name')
+        numbers = [number.get('$t') for number in contact.get('gd$phoneNumber', [])]
+
+        Contacts.add_contact(email, name, numbers)
 
     return "", 200
+
+
+
 
 
 if __name__ == '__main__':
