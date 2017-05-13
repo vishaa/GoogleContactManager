@@ -1,13 +1,17 @@
-from flask import Flask, render_template, redirect, request, abort
-from google.appengine.api import urlfetch
 import json
-from models.user import User
-from models.session import Session
-from models.contacts import Contacts
 from urllib import urlencode
-from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
-from services.oauth_services import fetch_access_token
+import logging
+
+from flask import Flask, render_template, redirect, request
 from google.appengine.api import taskqueue
+from google.appengine.api import urlfetch
+
+from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
+from models.contacts import Contacts
+from models.session import Session
+from models.user import User
+from models.contacts import Contacts
+from services.oauth_services import fetch_access_token
 
 app = Flask(__name__)
 
@@ -61,31 +65,32 @@ def oauth2_callback():
 def show_contacts():
     return 'Under Progress'
 
-
+#___________________________________________________Handlers_________________________________________________________
 @app.route('/fetch-contacts')
 def fetch_contacts():
     email = request.args.get('email')
     access_token = request.args.get('access_token')
 
     headers = {'Authorization': 'Bearer {}'.format(access_token)}
-    req_uri = 'https://www.google.com/m8/feeds/contacts/default/full?alt=json&max-results=5&v=3.0&access_token={}' + \
+    req_uri = 'https://www.google.com/m8/feeds/contacts/default/full?alt=json&max-results=25000&v=3.0&access_token={}' + \
               access_token
     r = urlfetch.fetch(req_uri, headers=headers, method='GET')
     data = json.loads(r.content)
 
     contact_list = data.get('feed', {}).get('entry', [])  # List
+
     for contact in contact_list:
-        name = contact.get('gd$name', {})\
-                        .get('gd$fullName', {})\
-                        .get('$t', 'No name')
-        numbers = [number.get('$t') for number in contact.get('gd$phoneNumber', [])]
+
+        if ('gd$phoneNumber' not in contact): continue
+
+        name = contact.get('gd$name', {}) \
+            .get('gd$fullName', {}) \
+            .get('$t', '')
+        numbers = [number.get('$t', '') for number in contact.get('gd$phoneNumber', [])]
 
         Contacts.add_contact(email, name, numbers)
 
     return "", 200
-
-
-
 
 
 if __name__ == '__main__':
