@@ -2,9 +2,11 @@ import json
 from urllib import urlencode
 import logging
 
-from flask import Flask, render_template, redirect, request
+from flask import Flask, render_template, redirect, request, jsonify
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
+from google.appengine.ext import ndb
+from google.appengine.datastore.datastore_query import Cursor
 
 from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
 from models.contacts import Contacts
@@ -18,12 +20,12 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    if 'sessionID' in request.cookies:
-        client_uuid = request.cookies.get('sessionID')
-        user = Session.get_by_id(client_uuid)
-        if user: return 'Welcome {}'.format(user.name)  # redirect('/showcontacts')
-
-    return render_template('index.html')
+    sessionID = request.cookies.get('sessionID')
+    if sessionID and sessionID != '':
+        user = Session.get_by_id(sessionID)
+        if user:
+            return render_template('index.html')
+    return render_template('signin.html')
 
 
 @app.route('/google-signin')
@@ -40,6 +42,7 @@ def google_signin():
 
 @app.route('/oauth2callback')
 def oauth2_callback():
+    if (request.args.get('error') == 'access_denied'): return 'You denied the access'
     token_data = fetch_access_token(request.args.get('code'))
 
     headers = {'Authorization': 'Bearer {}'.format(token_data['access_token'])}
@@ -61,11 +64,42 @@ def oauth2_callback():
     return res
 
 
-@app.route('/showcontacts')
-def show_contacts():
-    return 'Under Progress'
+@app.route('/contacts')
+def list_contacts():
+    session_id = request.cookies.get('sessionID')
+    if not session_id or session_id == '':
+        return jsonify(dict(success=False, error='unauthorized'))
+    user = Session.get_by_id(session_id)
+    if not user:
+        return jsonify(dict(success=False, error='unauthorized'))
 
-#___________________________________________________Handlers_________________________________________________________
+    email = user.email
+    logging.info('email : {}'.format(email))
+    cursor = Cursor(urlsafe=request.args.get('cursor'))
+    query = Contacts.query(Contacts.owner == email)
+    contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
+    logging.info('cursor: {} more: {}'.format(next_cursor, more))
+    data = [contact.to_dict() for contact in contacts]
+
+    return jsonify({
+        'cursor': next_cursor.urlsafe(),
+        'more': more,
+        'contacts': data,
+        'success': True
+    })
+
+
+@app.route('/logout')
+def logout():
+    uuid = request.cookies.get('sessionID')
+    entity = Session.get_by_id(uuid)
+    if entity: entity.key.delete()
+    res = redirect('/')
+    res.set_cookie('sessionID', '')
+    return res
+
+
+# ___________________________________________________Handlers_________________________________________________________
 @app.route('/fetch-contacts')
 def fetch_contacts():
     email = request.args.get('email')

@@ -8,7 +8,6 @@ class Session(ndb.Model):
     @staticmethod
     def set_session(user_data):
         uuid = str(uuid4())
-        Session(id=uuid,
-                         name=user_data.get('name'),
-                         email=user_data.get('email')).put()
+        Session(id=uuid, name=user_data.get('name'),
+                email=user_data.get('email')).put()
         return uuid
