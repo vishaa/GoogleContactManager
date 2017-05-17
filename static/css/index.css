@@ -9,10 +9,13 @@
     background-color: #64B5F6;
   }
 
-  #contact_table{
+  #contacts{
     border-collapse: collapse;
     font-family: sans-serif;
-    align: center;
+    overflow-y:scroll;
+    width:450px;
+    height:500px;
+    display:block;
   }
 
 

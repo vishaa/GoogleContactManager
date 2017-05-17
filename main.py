@@ -1,18 +1,17 @@
 import json
-from urllib import urlencode
 import logging
+from urllib import urlencode
 
 from flask import Flask, render_template, redirect, request, jsonify
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
-from google.appengine.ext import ndb
 from google.appengine.datastore.datastore_query import Cursor
+from google.appengine.ext import ndb
 
 from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
 from models.contacts import Contacts
 from models.session import Session
 from models.user import User
-from models.contacts import Contacts
 from services.oauth_services import fetch_access_token
 
 app = Flask(__name__)
@@ -74,10 +73,10 @@ def list_contacts():
         return jsonify(dict(success=False, error='unauthorized'))
 
     email = user.email
-    #logging.info('email : {}'.format(email))
-    cursor = urlsafe=request.args.get('cursor')
+    # logging.info('email : {}'.format(email))
+    cursor = urlsafe = request.args.get('cursor')
     cursor = Cursor(cursor) if cursor else None
-    query = Contacts.query(Contacts.owner == email)
+    query = Contacts.query(Contacts.owner == email).order(Contacts.name_lc)
     contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
     logging.info('cursor: {} more: {}'.format(next_cursor, more))
     data = [contact.to_dict() for contact in contacts]
@@ -113,6 +112,8 @@ def fetch_contacts():
     data = json.loads(r.content)
 
     contact_list = data.get('feed', {}).get('entry', [])  # List
+
+    ndb.delete_multi(Contacts.query(Contacts.owner == email).fetch(keys_only=True))
 
     for contact in contact_list:
 

@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
-  var contact_list = document.getElementById('contact_list');
+  var contact_list = document.getElementById('contacts');
   var xmlHttp = new XMLHttpRequest();
   var more = true;
   var cursor = "";
+  var fetchingMore = false;
   xmlHttp.open('GET', '/contacts?cursor='+ cursor, true);
   xmlHttp.send();
   xmlHttp.onreadystatechange = function () {
@@ -11,16 +12,20 @@ document.addEventListener('DOMContentLoaded', function() {
        var contacts = obj.contacts;
        more = obj.more;
        cursor = obj.cursor;
-       for ( var contact of contacts ) {
-         var name = contact.name;
-         var numberList = contact.numbers;
-         var numbers="";
-         numberList.forEach( function(item,index){
-            if(index>0)
-               numbers += ('<tr><td>' + item + '</td></tr>')
-          });
-         contact_list.innerHTML += ('<tr> <td rowspan='+ numberList.length +'>' + name + '</td><td>'+ numberList[0]+'</td></tr>'+ numbers ) ;
-       }
+       contacts.forEach(function(contact) {
+         if (contact && typeof contact.numbers == 'object') {
+          contact_list.innerHTML += `<li class="mdl-list__item">
+            <span class="mdl-list__item-primary-content">
+              <i class="material-icons  mdl-list__item-avatar">person</i>
+               ${contact.name}
+            </span>
+            <span class="mdl-list__item-secondary-action">
+              ${contact.numbers[0]}
+            </span>
+          </li>`
+         }
+       });
+
      }
  }
 });
