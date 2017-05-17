@@ -1,3 +1,21 @@
+  #contact_table, th,tr {
+    border: 3px solid black;
+  }
+
+  #contact_list tr td{
+    padding: 10px;
+    align: center;
+    border: 3px solid;
+    background-color: #64B5F6;
+  }
+
+  #contact_table{
+    border-collapse: collapse;
+    font-family: sans-serif;
+    align: center;
+  }
+
+
   #header {
         background-color: #00ACC1;
         width: 100%;
@@ -41,9 +59,4 @@
      text-decoration: none;
     }
 
-    a:link, a:visited, a:hover, a:active{
-    text-decoration: none;
-    color : black;
 }
-
-

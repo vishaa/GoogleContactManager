@@ -74,8 +74,9 @@ def list_contacts():
         return jsonify(dict(success=False, error='unauthorized'))
 
     email = user.email
-    logging.info('email : {}'.format(email))
-    cursor = Cursor(urlsafe=request.args.get('cursor'))
+    #logging.info('email : {}'.format(email))
+    cursor = urlsafe=request.args.get('cursor')
+    cursor = Cursor(cursor) if cursor else None
     query = Contacts.query(Contacts.owner == email)
     contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
     logging.info('cursor: {} more: {}'.format(next_cursor, more))
