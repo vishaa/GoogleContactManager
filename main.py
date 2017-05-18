@@ -74,11 +74,12 @@ def list_contacts():
 
     email = user.email
     # logging.info('email : {}'.format(email))
-    cursor = urlsafe = request.args.get('cursor')
-    cursor = Cursor(cursor) if cursor else None
+    cursor = request.args.get('cursor')
+    if not cursor: cursor = None;
+    cursor = Cursor(urlsafe= cursor)
     query = Contacts.query(Contacts.owner == email).order(Contacts.name_lc)
     contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
-    logging.info('cursor: {} more: {}'.format(next_cursor, more))
+    #logging.info('cursor: {} more: {}'.format(next_cursor, more))
     data = [contact.to_dict() for contact in contacts]
 
     return jsonify({

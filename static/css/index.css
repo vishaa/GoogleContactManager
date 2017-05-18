@@ -1,65 +1,12 @@
-  #contact_table, th,tr {
-    border: 3px solid black;
-  }
-
-  #contact_list tr td{
-    padding: 10px;
-    align: center;
-    border: 3px solid;
-    background-color: #64B5F6;
-  }
 
   #contacts{
-    border-collapse: collapse;
     font-family: sans-serif;
     overflow-y:scroll;
-    width:450px;
+    width:500px;
     height:500px;
     display:block;
   }
 
-
-  #header {
-        background-color: #00ACC1;
-        width: 100%;
-        height: 70px;
-        margin: 0 auto;
-        position: fixed;
-        color: white;
-        letter-spacing: 3px;
-        text-align: center;
-        font-weight: 1000;
-        font-family: "Verdana"
-    }
-
-    body{
+  body{
         margin: 0 auto;
     }
-
-    #user_info{
-        background-color: #1E88E5;
-        border-right: 2px outset #0D47A1;
-        height: 100%;
-        width: 300px;
-        margin: 0 auto;
-        position: fixed;
-    }
-
-    #dp{
-      height: 100px;
-      width: 100px;
-      border: 2px outset #0D47A1;
-      position: relative;
-      top: 100px;
-      left: 90px;
-    }
-
-    #logout{
-     position: absolute;
-     font-weight: 1000;
-     top: 5px;
-     right: 30px;
-     text-decoration: none;
-    }
-
-}
