@@ -6,6 +6,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   fetchContacts();
 
+  contacts_elm.addEventListener('scroll', scrollControl);
+  function scrollControl() {
+    if(contacts_elm.scrollHeight - contacts_elm.scrollTop == contacts_elm.clientHeight) {
+      if (!loadingContacts && more) {
+        fetchContacts();
+      }
+    }
+  }
+
   function fetchContacts () {
     if (loadingContacts) return;
     loadingContacts = true;
@@ -18,11 +27,10 @@ document.addEventListener('DOMContentLoaded', function() {
          var obj = JSON.parse(this.responseText);
          loadContacts(obj);
        }
-       else if (this.readyState == 4 && this.status !=200) {
+       else if (this.readyState == 4 && this.status == 500) {
          loadingContacts = false
          fetchContacts();
        }
-       if (more) fetchContacts();
     }
   }
 
@@ -45,9 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
        </li>`
       }
     });
-
     loadingContacts = false;
   }
-
 
 });
