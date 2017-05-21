@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   contacts_elm.addEventListener('scroll', scrollControl);
   function scrollControl() {
-    if(contacts_elm.scrollHeight - contacts_elm.scrollTop == contacts_elm.clientHeight) {
+    if( ( ( contacts_elm.scrollTop + contacts_elm.clientHeight ) / contacts_elm.scrollHeight ) >= 0.95 ) {
       if (!loadingContacts && more) {
         fetchContacts();
       }
@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function fetchContacts () {
     if (loadingContacts) return;
     loadingContacts = true;
+
+    contacts_elm.innerHTML+= '<li id="loading" style="text-align: center"> <img src="/static/gif/loading.gif"/> </li>';
+
     var xmlHttp = new XMLHttpRequest();
     var url = '/contacts?cursor='+ cursor;
     xmlHttp.open('GET', url , true);
@@ -40,6 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
     more = data.more;
     cursor = data.cursor;
 
+    contacts_elm.removeChild(document.getElementById('loading'));
+
     data.contacts.forEach(function(contact) {
       if (contact && typeof contact.numbers == 'object') {
         contacts_elm.innerHTML += `<li class="mdl-list__item">
@@ -53,6 +58,11 @@ document.addEventListener('DOMContentLoaded', function() {
        </li>`
       }
     });
+
+    if (!more){
+      contacts_elm.innerHTML += '<li style="text-align: center; text-color: #C0C0C0"> No more contacts </li>'
+    }
+
     loadingContacts = false;
   }
 
