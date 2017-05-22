@@ -3,23 +3,43 @@ document.addEventListener('DOMContentLoaded', function() {
   var cursor = '';
   var loadingContacts = false;
   var contacts_elm = document.getElementById('contacts');
+  const loadingGif = `<li id="loading" style="text-align: center">
+                        <img src="/static/gif/loading.gif"/>
+                      </li>`;
+  const noMoreElm = `<li style="text-align: center; text-color: #C0C0C0">
+                      No more contacts
+                     </li>`;
 
+  showLoader(true);
   fetchContacts();
 
-  contacts_elm.addEventListener('scroll', scrollControl);
-  function scrollControl() {
-    if( ( ( contacts_elm.scrollTop + contacts_elm.clientHeight ) / contacts_elm.scrollHeight ) >= 0.95 ) {
-      if (!loadingContacts && more) {
-        fetchContacts();
-      }
+  contacts_elm.addEventListener('scroll', loadMore);
+
+  function loadMore() {
+    const scrolledHeight = contacts_elm.scrollTop + contacts_elm.clientHeight;
+    const scrolled = (scrolledHeight / contacts_elm.scrollHeight) >= 0.95;
+    if (scrolled && !loadingContacts && more ) {
+      showLoader(true);
+      fetchContacts();
     }
   }
+
+  function showLoader(show) {
+    if (show) {
+      return contacts_elm.innerHTML += loadingGif;
+    }
+    contacts_elm.removeChild(document.getElementById('loading'));
+  }
+
+  function showInfo() {
+    contacts_elm.innerHTML += noMoreElm;
+  }
+
+
 
   function fetchContacts () {
     if (loadingContacts) return;
     loadingContacts = true;
-
-    contacts_elm.innerHTML+= '<li id="loading" style="text-align: center"> <img src="/static/gif/loading.gif"/> </li>';
 
     var xmlHttp = new XMLHttpRequest();
     var url = '/contacts?cursor='+ cursor;
@@ -42,8 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     more = data.more;
     cursor = data.cursor;
-
-    contacts_elm.removeChild(document.getElementById('loading'));
+    showLoader(false);
 
     data.contacts.forEach(function(contact) {
       if (contact && typeof contact.numbers == 'object') {
@@ -59,8 +78,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    if (!more){
-      contacts_elm.innerHTML += '<li style="text-align: center; text-color: #C0C0C0"> No more contacts </li>'
+    if (!more) {
+      showInfo();
     }
 
     loadingContacts = false;
