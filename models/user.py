@@ -4,14 +4,17 @@ class User(ndb.Model):
     name = ndb.StringProperty()
     email = ndb.StringProperty()
     picture = ndb.StringProperty()
-    access_token = ndb.StringProperty()
-    refresh_token = ndb.StringProperty()
+    access_token = ndb.StringProperty(default="")
+    refresh_token = ndb.StringProperty(default="")
+    importing_contacts = ndb.BooleanProperty(default=False)
 
     @staticmethod
-    def set_user(user_data, token_data):
+    def set_user(user_data):
         User(id=user_data.get('email'),
              name=user_data.get('name'),
              email=user_data.get('email'),
-             picture=user_data.get('picture'),
-             access_token=token_data.get('access_token'),
-             refresh_token=token_data.get('refresh_token')).put()
+             picture=user_data.get('picture')).put()
+
+    def set_token(self,token_data):
+        self.access_token=token_data.get('access_token')
+        self.refresh_token=token_data.get('refresh_token')

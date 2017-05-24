@@ -8,7 +8,7 @@ from google.appengine.api import urlfetch
 from google.appengine.datastore.datastore_query import Cursor
 from google.appengine.ext import ndb
 
-from config import OAUTH_ENDPOINT, CLIENT_ID, SCOPE, REDIRECT_URI
+from config import config
 from models.contacts import Contacts
 from models.session import Session
 from models.user import User
@@ -29,39 +29,83 @@ def index():
 
 @app.route('/google-signin')
 def google_signin():
-    params = {'client_id': CLIENT_ID,
-              'scope': SCOPE,
-              'redirect_uri': REDIRECT_URI,
+    params = {'client_id': config.get("CLIENT_ID"),
+              'scope': config.get("PROFILE_SCOPE"),
+              'redirect_uri': config.get("PROFILE_REDIRECT_URI"),
               'access_type': 'offline',
               'response_type': 'code',
               'prompt': 'consent'}
 
-    return redirect('{}?{}'.format(OAUTH_ENDPOINT, urlencode(params)))
+    return redirect('{}?{}'.format(config.get("OAUTH_ENDPOINT"), urlencode(params)))
 
 
-@app.route('/oauth2callback')
+@app.route('/loginCallback')
 def oauth2_callback():
-    if (request.args.get('error') == 'access_denied'): return 'You denied the access'
-    token_data = fetch_access_token(request.args.get('code'))
+    if (request.args.get('error') == 'access_denied'):
+        return 'You denied the access'
+    token_data = fetch_access_token(request.args.get('code'),
+                                     config.get("PROFILE_REDIRECT_URI"))
 
     headers = {'Authorization': 'Bearer {}'.format(token_data['access_token'])}
     url = 'https://www.googleapis.com/oauth2/v1/userinfo'
     res = urlfetch.fetch(url, headers=headers, method='GET')  # Getting userinfo
     user_data = json.loads(res.content)
 
-    User.set_user(user_data, token_data)
+    User.set_user(user_data)
     uuid = Session.set_session(user_data)
-
-    taskqueue.add(url='/fetch-contacts',
-                  params={'email': user_data.get('email'),
-                          'access_token': token_data.get('access_token')},
-                  method='GET')
 
     res = redirect('/')
     res.set_cookie('sessionID', uuid)
 
     return res
 
+
+@app.route('/oauthPermission')
+def contacts_oauth():
+    uuid = request.cookies.get('sessionID')
+    entity = Session.get_by_id(uuid)
+    if entity: email=entity.email
+    else : return redirect('/')
+
+    user = User.get_by_id(email)
+    if user.importing_contacts: return ""
+
+    params = {'client_id': config.get("CLIENT_ID"),
+              'scope': config.get("CONTACT_SCOPE"),
+              'redirect_uri': config.get("CONTACTS_REDIRECT_URI"),
+              'access_type': 'offline',
+              'response_type': 'code',
+              'prompt': 'consent'}
+
+    return redirect('{}?{}'.format(config.get("OAUTH_ENDPOINT"), urlencode(params)))
+
+
+@app.route('/oauth2callback')
+def import_contacts():
+    uuid = request.cookies.get('sessionID')
+    entity = Session.get_by_id(uuid)
+
+    if entity:
+        email = entity.email
+    else:
+        return redirect('/')
+
+    if (request.args.get('error') == 'access_denied'):
+         return 'You denied the access'
+
+    token_data = fetch_access_token(request.args.get('code'),
+                                    config.get("CONTACTS_REDIRECT_URI"))
+
+    user = User.get_by_id(email)
+    user.set_token(token_data)
+    user.has_imported = False
+    user.put()
+    taskqueue.add(url='/fetch-contacts',
+                  params={'email': email,
+                          'access_token': token_data.get('access_token')},
+                  method='GET')
+
+    return redirect('/')
 
 @app.route('/contacts')
 def list_contacts():
@@ -106,9 +150,10 @@ def fetch_contacts():
     email = request.args.get('email')
     access_token = request.args.get('access_token')
 
+    user=User.get_by_id(email)
+
     headers = {'Authorization': 'Bearer {}'.format(access_token)}
-    req_uri = 'https://www.google.com/m8/feeds/contacts/default/full?alt=json&max-results=25000&v=3.0&access_token={}' + \
-              access_token
+    req_uri = 'https://www.google.com/m8/feeds/contacts/default/full?alt=json&max-results=25000&v=3.0'
     r = urlfetch.fetch(req_uri, headers=headers, method='GET')
     data = json.loads(r.content)
 
@@ -126,6 +171,9 @@ def fetch_contacts():
         numbers = [number.get('$t', '') for number in contact.get('gd$phoneNumber', [])]
 
         Contacts.add_contact(email, name, numbers)
+
+    user.importing_contacts = False
+    user.put()
 
     return "", 200
 
