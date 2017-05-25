@@ -14,11 +14,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.importContacts = function() {
     contactsPermission.close();
+    importButton.remove();
     document.body.innerHTML+= "<ul class='demo-list-control mdl-list' id='contacts'></ul>";
     contacts_elm = document.getElementById('contacts');
-    contacts_elm.addEventListener('scroll', loadMore);
+
     showLoader(true);
     fetchContacts();
+    contacts_elm.addEventListener('scroll', loadMore);
   };
 
   importButton.addEventListener('click', function() {
