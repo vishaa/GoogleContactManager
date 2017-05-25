@@ -64,11 +64,13 @@ def oauth2_callback():
 def contacts_oauth():
     uuid = request.cookies.get('sessionID')
     entity = Session.get_by_id(uuid)
-    if entity: email=entity.email
-    else : return redirect('/')
+    if entity:
+        email=entity.email
+    else :
+        return redirect('/')
 
     user = User.get_by_id(email)
-    if user.importing_contacts: return ""
+    if not user.has_imported: return ""
 
     params = {'client_id': config.get("CLIENT_ID"),
               'scope': config.get("CONTACT_SCOPE"),
@@ -105,7 +107,7 @@ def import_contacts():
                           'access_token': token_data.get('access_token')},
                   method='GET')
 
-    return redirect('/')
+    return render_template('popup.html',success='true')
 
 @app.route('/contacts')
 def list_contacts():
@@ -172,7 +174,7 @@ def fetch_contacts():
 
         Contacts.add_contact(email, name, numbers)
 
-    user.importing_contacts = False
+    user.has_imported = True
     user.put()
 
     return "", 200

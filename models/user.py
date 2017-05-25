@@ -6,7 +6,7 @@ class User(ndb.Model):
     picture = ndb.StringProperty()
     access_token = ndb.StringProperty(default="")
     refresh_token = ndb.StringProperty(default="")
-    importing_contacts = ndb.BooleanProperty(default=False)
+    has_imported = ndb.BooleanProperty(default=True)
 
     @staticmethod
     def set_user(user_data):

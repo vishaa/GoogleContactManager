@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
   var more = true;
   var cursor = '';
   var loadingContacts = false;
-  var contacts_elm = document.getElementById('contacts');
+  var contacts_elm;
+  var contactsPermission;
+  var importButton = document.getElementById('importContacts');
   const loadingGif = `<li id="loading" style="text-align: center">
                         <img src="/static/gif/loading.gif"/>
                       </li>`;
@@ -10,10 +12,21 @@ document.addEventListener('DOMContentLoaded', function() {
                       No more contacts
                      </li>`;
 
-  showLoader(true);
-  fetchContacts();
+  window.importContacts = function() {
+    contactsPermission.close();
+    document.body.innerHTML+= "<ul class='demo-list-control mdl-list' id='contacts'></ul>";
+    contacts_elm = document.getElementById('contacts');
+    contacts_elm.addEventListener('scroll', loadMore);
+    showLoader(true);
+    fetchContacts();
+  };
 
-  contacts_elm.addEventListener('scroll', loadMore);
+  importButton.addEventListener('click', function() {
+    contactsPermission = window.open('/oauthPermission',
+                                     'contactsPermission',
+                                     'width=500, height=600');
+  });
+
 
   function loadMore() {
     const scrolledHeight = contacts_elm.scrollTop + contacts_elm.clientHeight;
