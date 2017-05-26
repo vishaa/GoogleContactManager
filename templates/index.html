@@ -13,10 +13,13 @@
   <button onClick="window.location='/logout'" class="mdl-button mdl-js-button mdl-button--raised">
      Logout
   </button>
-
-  <button id="importContacts" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">
+  {% if (import_status == 'not_imported') or (import_status == 'failed') %}
+  <button id="importButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">
     Import Contacts
   </button>
+  {% else %}
+  <input type="hidden" id="loadContacts"/>
+  {%endif%}
   <!-- MDL Spinner Component with Single Color -->
 <!--<div id="user_info">-->
     <!--<div id="dp"></div>-->

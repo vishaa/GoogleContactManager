@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var loadingContacts = false;
   var contacts_elm;
   var contactsPermission;
-  var importButton = document.getElementById('importContacts');
+  var importButton;
   const loadingGif = `<li id="loading" style="text-align: center">
                         <img src="/static/gif/loading.gif"/>
                       </li>`;
@@ -12,22 +12,33 @@ document.addEventListener('DOMContentLoaded', function() {
                       No more contacts
                      </li>`;
 
+  if(document.getElementById('loadContacts')){
+    startLoadingContacts();
+  }
+
+  if(document.getElementById('importButton')){
+    importButton = document.getElementById('importButton');
+    importButton.addEventListener('click',function() {
+      contactsPermission = window.open('/oauthPermission',
+                                       'contactsPermission',
+                                       'width=500, height=600');
+    });
+  }
+
   window.importContacts = function() {
     contactsPermission.close();
     importButton.remove();
+    startLoadingContacts();
+  };
+
+
+  function startLoadingContacts() {
     document.body.innerHTML+= "<ul class='demo-list-control mdl-list' id='contacts'></ul>";
     contacts_elm = document.getElementById('contacts');
-
     showLoader(true);
     fetchContacts();
     contacts_elm.addEventListener('scroll', loadMore);
-  };
-
-  importButton.addEventListener('click', function() {
-    contactsPermission = window.open('/oauthPermission',
-                                     'contactsPermission',
-                                     'width=500, height=600');
-  });
+  }
 
 
   function loadMore() {
@@ -49,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function showInfo() {
     contacts_elm.innerHTML += noMoreElm;
   }
-
 
 
   function fetchContacts () {

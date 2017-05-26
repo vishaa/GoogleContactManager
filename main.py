@@ -1,5 +1,4 @@
 import json
-import logging
 from urllib import urlencode
 
 from flask import Flask, render_template, redirect, request, jsonify
@@ -21,9 +20,13 @@ app = Flask(__name__)
 def index():
     sessionID = request.cookies.get('sessionID')
     if sessionID and sessionID != '':
-        user = Session.get_by_id(sessionID)
-        if user:
-            return render_template('index.html')
+        entity = Session.get_by_id(sessionID)
+        if entity:
+            email = entity.email
+            user = User.get_by_id(email)
+            if not user: return render_template('signin.html')
+            import_status = user.import_status
+            return render_template('index.html', import_status=import_status)
     return render_template('signin.html')
 
 
@@ -44,14 +47,21 @@ def oauth2_callback():
     if (request.args.get('error') == 'access_denied'):
         return 'You denied the access'
     token_data = fetch_access_token(request.args.get('code'),
-                                     config.get("PROFILE_REDIRECT_URI"))
+                                    config.get("PROFILE_REDIRECT_URI"))
 
     headers = {'Authorization': 'Bearer {}'.format(token_data['access_token'])}
     url = 'https://www.googleapis.com/oauth2/v1/userinfo'
     res = urlfetch.fetch(url, headers=headers, method='GET')  # Getting userinfo
     user_data = json.loads(res.content)
+    email = user_data.get('email')
+    user = User.get_by_id(email)
+    if user:
+        user.name = user_data.get('name')
+        picture=user_data.get('picture')
+        user.put()
+    else:
+        User.set_user(user_data)
 
-    User.set_user(user_data)
     uuid = Session.set_session(user_data)
 
     res = redirect('/')
@@ -65,12 +75,12 @@ def contacts_oauth():
     uuid = request.cookies.get('sessionID')
     entity = Session.get_by_id(uuid)
     if entity:
-        email=entity.email
-    else :
+        email = entity.email
+    else:
         return redirect('/')
 
     user = User.get_by_id(email)
-    if not user.has_imported: return ""
+    if user.import_status == "importing": return ""
 
     params = {'client_id': config.get("CLIENT_ID"),
               'scope': config.get("CONTACT_SCOPE"),
@@ -93,21 +103,22 @@ def import_contacts():
         return redirect('/')
 
     if (request.args.get('error') == 'access_denied'):
-         return 'You denied the access'
+        return 'You denied the access'
 
     token_data = fetch_access_token(request.args.get('code'),
                                     config.get("CONTACTS_REDIRECT_URI"))
 
     user = User.get_by_id(email)
     user.set_token(token_data)
-    user.has_imported = False
+    user.import_status = "importing"
     user.put()
     taskqueue.add(url='/fetch-contacts',
                   params={'email': email,
                           'access_token': token_data.get('access_token')},
                   method='GET')
 
-    return render_template('popup.html',success='true')
+    return render_template('popup.html', success='true')
+
 
 @app.route('/contacts')
 def list_contacts():
@@ -122,10 +133,10 @@ def list_contacts():
     # logging.info('email : {}'.format(email))
     cursor = request.args.get('cursor')
     if not cursor: cursor = None;
-    cursor = Cursor(urlsafe= cursor)
+    cursor = Cursor(urlsafe=cursor)
     query = Contacts.query(Contacts.owner == email).order(Contacts.name_lc)
     contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
-    #logging.info('cursor: {} more: {}'.format(next_cursor, more))
+    # logging.info('cursor: {} more: {}'.format(next_cursor, more))
     data = [contact.to_dict() for contact in contacts]
 
     return jsonify({
@@ -151,9 +162,7 @@ def logout():
 def fetch_contacts():
     email = request.args.get('email')
     access_token = request.args.get('access_token')
-
-    user=User.get_by_id(email)
-
+    user = User.get_by_id(email)
     headers = {'Authorization': 'Bearer {}'.format(access_token)}
     req_uri = 'https://www.google.com/m8/feeds/contacts/default/full?alt=json&max-results=25000&v=3.0'
     r = urlfetch.fetch(req_uri, headers=headers, method='GET')
@@ -174,10 +183,11 @@ def fetch_contacts():
 
         Contacts.add_contact(email, name, numbers)
 
-    user.has_imported = True
+    user.import_status = "imported"
     user.put()
 
     return "", 200
+
 
 
 if __name__ == '__main__':
