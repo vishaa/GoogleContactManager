@@ -13,8 +13,20 @@ document.addEventListener('DOMContentLoaded', function() {
                      </li>`;
 
   if(document.getElementById('loadContacts')){
-    startLoadingContacts();
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open('GET','/importStatus',true);
+    xmlHttp.send();
+    xmlHttp.onreadystatechange = function() {
+      if(this.readyState == 4 && this.status == 200){
+        var obj = JSON.parse(this.responseText);
+        var importStatus = obj.import_status;
+        if(importStatus === 'imported'){
+          startLoadingContacts();
+        }
+      }
+    };
   }
+
 
   if(document.getElementById('importButton')){
     importButton = document.getElementById('importButton');

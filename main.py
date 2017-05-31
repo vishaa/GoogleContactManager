@@ -119,6 +119,17 @@ def import_contacts():
 
     return render_template('popup.html', success='true')
 
+@app.route('/importStatus')
+def import_status():
+    session_id = request.cookies.get('sessionID')
+    entity = Session.get_by_id(session_id)
+    if not entity:
+        return jsonify({'error':'login_required'})
+    user = User.get_by_id(entity.email)
+    if user:
+        return jsonify({'import_status':user.import_status})
+    else:
+        return jsonify({'error':'login_required'})
 
 @app.route('/contacts')
 def list_contacts():
@@ -137,10 +148,14 @@ def list_contacts():
     query = Contacts.query(Contacts.owner == email).order(Contacts.name_lc)
     contacts, next_cursor, more = query.fetch_page(10, start_cursor=cursor)
     # logging.info('cursor: {} more: {}'.format(next_cursor, more))
+    if next_cursor:
+        cursor = next_cursor.urlsafe()
+    else:
+        cursor = None
     data = [contact.to_dict() for contact in contacts]
 
     return jsonify({
-        'cursor': next_cursor.urlsafe(),
+        'cursor': cursor,
         'more': more,
         'contacts': data,
         'success': True
@@ -150,8 +165,10 @@ def list_contacts():
 @app.route('/logout')
 def logout():
     uuid = request.cookies.get('sessionID')
-    entity = Session.get_by_id(uuid)
-    if entity: entity.key.delete()
+    if uuid:
+        entity = Session.get_by_id(uuid)
+        if entity:
+            entity.key.delete()
     res = redirect('/')
     res.set_cookie('sessionID', '')
     return res
