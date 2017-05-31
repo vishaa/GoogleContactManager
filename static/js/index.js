@@ -8,11 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const loadingGif = `<li id="loading" style="text-align: center">
                         <img src="/static/gif/loading.gif"/>
                       </li>`;
+  const importStatusGif = '<img src="/static/gif/import_status_loader.gif"/>';
   const noMoreElm = `<li style="text-align: center; text-color: #C0C0C0">
                       No more contacts
                      </li>`;
 
-  if(document.getElementById('loadContacts')){
+  function checkImportstatus() {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open('GET','/importStatus',true);
     xmlHttp.send();
@@ -20,11 +21,25 @@ document.addEventListener('DOMContentLoaded', function() {
       if(this.readyState == 4 && this.status == 200){
         var obj = JSON.parse(this.responseText);
         var importStatus = obj.import_status;
-        if(importStatus === 'imported'){
+        if(importStatus == 'imported'){
+          document.body.removeChild(document.getElementById('importGif'));
           startLoadingContacts();
+        }
+        else if (importStatus == 'importing'){
+          document.getElementById('importGif').innerHTML = importStatusGif;
+          checkImportstatus();
         }
       }
     };
+  }
+
+  if(document.getElementById('loadContacts')) {
+    startLoadingContacts();
+  }
+
+  if(document.getElementById('importingContacts')) {
+    document.body.innerHTML += '<div id="importGif"></div>';
+    checkImportstatus();
   }
 
 
@@ -40,7 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
   window.importContacts = function() {
     contactsPermission.close();
     importButton.remove();
-    startLoadingContacts();
+    document.body.innerHTML += '<div id="importGif"></div>';
+    checkImportstatus();
   };
 
 

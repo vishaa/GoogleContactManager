@@ -122,9 +122,13 @@ def import_contacts():
 @app.route('/importStatus')
 def import_status():
     session_id = request.cookies.get('sessionID')
+    if not session_id:
+        return jsonify({'error':'login_required'})
+
     entity = Session.get_by_id(session_id)
     if not entity:
         return jsonify({'error':'login_required'})
+        
     user = User.get_by_id(entity.email)
     if user:
         return jsonify({'import_status':user.import_status})

@@ -17,19 +17,11 @@
   <button id="importButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">
     Import Contacts
   </button>
-  {% else %}
+  {% elif (import_status == 'imported') %}
   <input type="hidden" id="loadContacts"/>
+  {% else %}
+  <input type="hidden" id="importingContacts"/>
   {%endif%}
-  <!-- MDL Spinner Component with Single Color -->
-<!--<div id="user_info">-->
-    <!--<div id="dp"></div>-->
-    <!--<div id="user_name"></div>-->
-    <!--<div id="user_email"></div>-->
-<!--</div>-->
-<!--<div id="header">-->
-    <!--<h1> Google Contact Manager </h1>   <a href="/logout">-->
-    <!--<div id="logout" class="link"><h3>Logout</h3></div>-->
-<!--</a>-->
-<!--</div>-->
+
 </body>
 </html>
